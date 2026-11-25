@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXO | Área do estudante</title>
+
+  <!-- Bibliotecas usadas nesta página de demonstração -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --fundo: #0b1220;
+      --painel: #121d2e;
+      --borda: #26364d;
+      --texto: #e8eef7;
+      --texto-suave: #9eafc4;
+      --destaque: #38bdf8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--fundo);
+      color: var(--texto);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .estrutura {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .menu-lateral {
+      width: 250px;
+      padding: 28px 18px;
+      background: #0e1929;
+      border-right: 1px solid var(--borda);
+    }
+
+    .marca {
+      color: white;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+
+    .menu-link {
+      display: block;
+      padding: 11px 13px;
+      margin: 6px 0;
+      border-radius: 9px;
+      color: var(--texto-suave);
+      text-decoration: none;
+    }
+
+    .menu-link:hover, .menu-link.ativo {
+      color: white;
+      background: #1b2d43;
+    }
+
+    .conteudo {
+      flex: 1;
+      min-width: 0;
+      padding: 30px;
+    }
+
+    .painel {
+      background: var(--painel);
+      border: 1px solid var(--borda);
+      border-radius: 15px;
+    }
+
+    .texto-suave { color: var(--texto-suave); }
+
+    .cartao-materia {
+      height: 100%;
+      padding: 19px;
+      transition: transform .2s ease, border-color .2s ease;
+    }
+
+    .cartao-materia:hover {
+      transform: translateY(-3px);
+      border-color: #3d668a;
+    }
+
+    .barra-progresso {
+      height: 8px;
+      overflow: hidden;
+      background: #26364d;
+      border-radius: 20px;
+    }
+
+    .barra-progresso span {
+      display: block;
+      height: 100%;
+      background: var(--destaque);
+      border-radius: inherit;
+    }
+
+    .botao-principal {
+      border: 0;
+      border-radius: 9px;
+      padding: 10px 15px;
+      color: #062033;
+      background: var(--destaque);
+      font-weight: 700;
+    }
+
+    .botao-principal:hover { background: #7dd3fc; }
+
+    @media (max-width: 760px) {
+      .estrutura { display: block; }
+      .menu-lateral {
+        width: 100%;
+        padding: 16px;
+        border-right: 0;
+        border-bottom: 1px solid var(--borda);
+      }
+      .menu-links {
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+      }
+      .menu-link { white-space: nowrap; }
+      .conteudo { padding: 20px 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="estrutura">
+    <aside class="menu-lateral">
+      <div class="marca mb-1">NEXO</div>
+      <p class="texto-suave small mb-4">Sua rotina de aprendizagem</p>
+
+      <nav class="menu-links" aria-label="Navegação principal">
+        <a class="menu-link ativo" href="#inicio">Visão geral</a>
+        <a class="menu-link" href="#materias">Minhas matérias</a>
+        <a class="menu-link" href="#progresso">Meu progresso</a>
+        <a class="menu-link" href="#ajuda">Ajuda e suporte</a>
+      </nav>
+    </aside>
+
+    <main class="conteudo">
+      <header class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4" id="inicio">
+        <div>
+          <p class="texto-suave mb-1">ÁREA DO ESTUDANTE</p>
+          <h1 class="h2 fw-bold mb-1">Olá! Que bom ter você por aqui.</h1>
+          <p class="texto-suave mb-0">Organize seus estudos e acompanhe suas atividades.</p>
+        </div>
+        <button class="botao-principal" id="botaoBreno">Conversar com o BRENO</button>
+      </header>
+
+      <section class="row g-3 mb-4" aria-label="Resumo dos estudos">
+        <div class="col-sm-6 col-xl-3">
+          <div class="painel p-3 h-100">
+            <p class="texto-suave small mb-2">Matérias em andamento</p>
+            <div class="h2 fw-bold mb-0">04</div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="painel p-3 h-100">
+            <p class="texto-suave small mb-2">Atividades concluídas</p>
+            <div class="h2 fw-bold mb-0">18</div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="painel p-3 h-100">
+            <p class="texto-suave small mb-2">Horas de estudo</p>
+            <div class="h2 fw-bold mb-0">12h</div>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="painel p-3 h-100">
+            <p class="texto-suave small mb-2">Meta semanal</p>
+            <div class="h2 fw-bold mb-0">75%</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="materias" class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 fw-bold mb-0">Continue estudando</h2>
+          <span class="texto-suave small">Seus conteúdos</span>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-md-6 col-xl-4">
+            <article class="painel cartao-materia">
+              <span class="badge text-bg-primary mb-3">Linguagens</span>
+              <h3 class="h5 fw-bold">Língua Portuguesa</h3>
+              <p class="texto-suave small">Interpretação de texto e gramática.</p>
+              <div class="d-flex justify-content-between small mb-2"><span>Progresso</span><strong>80%</strong></div>
+              <div class="barra-progresso"><span style="width:80%"></span></div>
+            </article>
+          </div>
+          <div class="col-md-6 col-xl-4">
+            <article class="painel cartao-materia">
+              <span class="badge text-bg-success mb-3">Exatas</span>
+              <h3 class="h5 fw-bold">Matemática</h3>
+              <p class="texto-suave small">Revisão de funções e porcentagem.</p>
+              <div class="d-flex justify-content-between small mb-2"><span>Progresso</span><strong>55%</strong></div>
+              <div class="barra-progresso"><span style="width:55%"></span></div>
+            </article>
+          </div>
+          <div class="col-md-6 col-xl-4">
+            <article class="painel cartao-materia">
+              <span class="badge text-bg-warning mb-3">Humanas</span>
+              <h3 class="h5 fw-bold">História</h3>
+              <p class="texto-suave small">Brasil República e história contemporânea.</p>
+              <div class="d-flex justify-content-between small mb-2"><span>Progresso</span><strong>35%</strong></div>
+              <div class="barra-progresso"><span style="width:35%"></span></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="row g-3" id="progresso">
+        <div class="col-lg-7">
+          <div class="painel p-4 h-100">
+            <h2 class="h5 fw-bold mb-3">Seu ritmo nesta semana</h2>
+            <p class="texto-suave mb-2">Você está avançando. Continue mantendo uma rotina possível e constante.</p>
+            <div class="barra-progresso mt-3"><span style="width:75%"></span></div>
+            <p class="small texto-suave mt-2 mb-0">75% da meta semanal alcançada</p>
+          </div>
+        </div>
+        <div class="col-lg-5" id="ajuda">
+          <div class="painel p-4 h-100">
+            <h2 class="h5 fw-bold mb-2">Precisa de uma força?</h2>
+            <p class="texto-suave">O BRENO pode ajudar a revisar conteúdos e organizar suas dúvidas.</p>
+            <button class="botao-principal" id="botaoAjuda">Ver opções de ajuda</button>
+            <p class="small texto-suave mt-3 mb-0" id="mensagemAjuda" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="texto-suave small text-center mt-4">
+        NEXO · Área de demonstração. Os números e conteúdos desta tela são exemplos.
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Ações simples para demonstrar os botões da página.
+    const botaoBreno = document.querySelector("#botaoBreno");
+    const botaoAjuda = document.querySelector("#botaoAjuda");
+    const mensagemAjuda = document.querySelector("#mensagemAjuda");
+
+    botaoBreno.addEventListener("click", function () {
+      alert("O atalho do BRENO será conectado ao chat na próxima etapa.");
+    });
+
+    botaoAjuda.addEventListener("click", function () {
+      mensagemAjuda.textContent = "Em breve: acesso ao chat, materiais de revisão e perguntas frequentes.";
+    });
+  </script>
+</body>
+</html>
