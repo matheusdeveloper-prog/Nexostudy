@@ -112,6 +112,27 @@
 
     .botao-principal:hover { background: #7dd3fc; }
 
+
+    /* Chat integrado do BRENO */
+    .breno-modal[hidden]{display:none!important}
+    .breno-modal{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:16px;background:rgba(2,8,18,.78)}
+    .breno-window{display:flex;flex-direction:column;width:min(100%,520px);height:min(720px,88vh);overflow:hidden;border:1px solid #36516e;border-radius:18px;background:#101d2e;box-shadow:0 24px 80px rgba(0,0,0,.45)}
+    .breno-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--borda);background:#14243a}
+    .breno-identidade{display:flex;align-items:center;gap:11px}
+    .breno-avatar{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;color:#062033;background:var(--destaque);font-weight:800}
+    .breno-status{color:#86efac;font-size:.78rem}
+    .breno-fechar{border:0;border-radius:8px;padding:7px 11px;color:var(--texto);background:#26364d}
+    .breno-mensagens{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:18px}
+    .breno-msg{max-width:88%;padding:11px 14px;border-radius:14px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+    .breno-msg.assistente{align-self:flex-start;color:var(--texto);background:#1c2e45;border-bottom-left-radius:4px}
+    .breno-msg.usuario{align-self:flex-end;color:#062033;background:#7dd3fc;border-bottom-right-radius:4px}
+    .breno-compondo{min-height:20px;padding:0 18px 8px;color:var(--texto-suave);font-size:.85rem}
+    .breno-form{display:flex;gap:9px;padding:14px;border-top:1px solid var(--borda)}
+    .breno-form textarea{flex:1;min-width:0;max-height:110px;resize:vertical;border:1px solid #36516e;border-radius:10px;padding:10px 12px;color:var(--texto);background:#0b1625}
+    .breno-form button{border:0;border-radius:10px;padding:0 16px;color:#062033;background:var(--destaque);font-weight:700}
+    .breno-form button:disabled{opacity:.55;cursor:not-allowed}
+    .breno-aviso{padding:0 15px 12px;color:var(--texto-suave);font-size:.72rem}
+
     @media (max-width: 760px) {
       .estrutura { display: block; }
       .menu-lateral {
@@ -243,18 +264,115 @@
     </main>
   </div>
 
+
+  <section class="breno-modal" id="brenoModal" hidden aria-label="Conversa com BRENO" aria-modal="true" role="dialog">
+    <div class="breno-window">
+      <header class="breno-top">
+        <div class="breno-identidade">
+          <div class="breno-avatar" aria-hidden="true">B</div>
+          <div><strong>BRENO <span style="color:var(--destaque)">IA</span></strong><div class="breno-status">Assistente de estudos</div></div>
+        </div>
+        <button class="breno-fechar" id="fecharBreno" type="button">Fechar ✕</button>
+      </header>
+      <div class="breno-mensagens" id="brenoMensagens" aria-live="polite">
+        <div class="breno-msg assistente">Olá! Eu sou o BRENO. 😊
+Como posso ajudar nos seus estudos hoje?</div>
+      </div>
+      <div class="breno-compondo" id="brenoStatus" aria-live="polite"></div>
+      <form class="breno-form" id="brenoForm">
+        <textarea id="brenoEntrada" rows="1" maxlength="4000" placeholder="Digite sua dúvida..." aria-label="Sua mensagem para o BRENO" required></textarea>
+        <button id="brenoEnviar" type="submit">Enviar</button>
+      </form>
+      <div class="breno-aviso">As respostas podem conter imprecisões. Confira informações importantes com seu material de estudo.</div>
+    </div>
+  </section>
+
+
   <script>
-    // Ações simples para demonstrar os botões da página.
+    // Controles da área do estudante e do chat do BRENO.
     const botaoBreno = document.querySelector("#botaoBreno");
     const botaoAjuda = document.querySelector("#botaoAjuda");
     const mensagemAjuda = document.querySelector("#mensagemAjuda");
+    const modalBreno = document.querySelector("#brenoModal");
+    const fecharBreno = document.querySelector("#fecharBreno");
+    const formBreno = document.querySelector("#brenoForm");
+    const entradaBreno = document.querySelector("#brenoEntrada");
+    const mensagensBreno = document.querySelector("#brenoMensagens");
+    const statusBreno = document.querySelector("#brenoStatus");
+    const enviarBreno = document.querySelector("#brenoEnviar");
 
-    botaoBreno.addEventListener("click", function () {
-      alert("O atalho do BRENO será conectado ao chat na próxima etapa.");
+    const historicoBreno = [{
+      role: "system",
+      content: "Você é BRENO, assistente virtual de estudos do NEXO. Responda em português brasileiro, com clareza, acolhimento e foco educacional. Explique passo a passo quando necessário e incentive o raciocínio do estudante."
+    }];
+
+    function abrirBreno() {
+      modalBreno.hidden = false;
+      document.body.style.overflow = "hidden";
+      entradaBreno.focus();
+    }
+
+    function fecharJanelaBreno() {
+      modalBreno.hidden = true;
+      document.body.style.overflow = "";
+      botaoBreno.focus();
+    }
+
+    function adicionarMensagem(texto, autor) {
+      const elemento = document.createElement("div");
+      elemento.className = "breno-msg " + autor;
+      elemento.textContent = texto;
+      mensagensBreno.appendChild(elemento);
+      mensagensBreno.scrollTop = mensagensBreno.scrollHeight;
+    }
+
+    botaoBreno.addEventListener("click", abrirBreno);
+    fecharBreno.addEventListener("click", fecharJanelaBreno);
+    modalBreno.addEventListener("click", function(evento) {
+      if (evento.target === modalBreno) fecharJanelaBreno();
+    });
+    document.addEventListener("keydown", function(evento) {
+      if (evento.key === "Escape" && !modalBreno.hidden) fecharJanelaBreno();
     });
 
-    botaoAjuda.addEventListener("click", function () {
-      mensagemAjuda.textContent = "Em breve: acesso ao chat, materiais de revisão e perguntas frequentes.";
+    formBreno.addEventListener("submit", async function(evento) {
+      evento.preventDefault();
+      const texto = entradaBreno.value.trim();
+      if (!texto || enviarBreno.disabled) return;
+
+      adicionarMensagem(texto, "usuario");
+      historicoBreno.push({ role: "user", content: texto });
+      entradaBreno.value = "";
+      enviarBreno.disabled = true;
+      statusBreno.textContent = "BRENO está pensando...";
+
+      try {
+        const resposta = await fetch("/api/breno", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: historicoBreno })
+        });
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(dados.error || "Não foi possível obter uma resposta agora.");
+        const conteudo = dados.message && dados.message.content;
+        if (typeof conteudo !== "string" || !conteudo.trim()) {
+          throw new Error("O BRENO retornou uma resposta vazia. Tente novamente.");
+        }
+        historicoBreno.push({ role: "assistant", content: conteudo });
+        adicionarMensagem(conteudo, "assistente");
+      } catch (erro) {
+        historicoBreno.pop();
+        adicionarMensagem(erro.message || "Falha ao conectar com o BRENO. Tente novamente.", "assistente");
+      } finally {
+        statusBreno.textContent = "";
+        enviarBreno.disabled = false;
+        entradaBreno.focus();
+      }
+    });
+
+    botaoAjuda.addEventListener("click", function() {
+      mensagemAjuda.textContent = "O chat do BRENO está pronto para receber suas dúvidas.";
+      abrirBreno();
     });
   </script>
 </body>
