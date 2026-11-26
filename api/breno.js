@@ -54,9 +54,6 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "A chave GEMINI_API_KEY não está configurada na Vercel." });
-  }
 
   try {
     const body = req.body && typeof req.body === "object" ? req.body : {};
@@ -88,44 +85,46 @@ export default async function handler(req, res) {
     let upstream;
     let result = {};
     let answer = "";
-    let primaryFailed = false;
-    let primaryErrorMessage = "";
-    try {
-      upstream = await fetchWithTimeout(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemText }] },
-            contents,
-            generationConfig: { temperature: 0.65, maxOutputTokens: 1600 }
-          })
-        },
-        25000
-      );
-      result = await upstream.json().catch(() => ({}));
-      if (!upstream.ok) {
-        primaryFailed = upstream.status === 429 || upstream.status >= 500;
-        primaryErrorMessage = result?.error?.message || `Gemini HTTP ${upstream.status}`;
-        if (!primaryFailed) {
-          const safeMessage = upstream.status === 400
-            ? "O Gemini não aceitou a mensagem. Tente reformular sua pergunta."
-            : upstream.status === 403 || upstream.status === 401
-              ? "A autenticação do Gemini falhou. Confira a variável GEMINI_API_KEY na Vercel."
-              : "Não consegui completar essa solicitação. Tente novamente.";
-          return res.status(502).json({ error: safeMessage });
+    let primaryFailed = !apiKey;
+    let primaryErrorMessage = apiKey ? "" : "GEMINI_API_KEY não configurada.";
+    if (apiKey) {
+      try {
+        upstream = await fetchWithTimeout(
+          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: systemText }] },
+              contents,
+              generationConfig: { temperature: 0.65, maxOutputTokens: 1600 }
+            })
+          },
+          25000
+        );
+        result = await upstream.json().catch(() => ({}));
+        if (!upstream.ok) {
+          primaryFailed = upstream.status === 429 || upstream.status >= 500;
+          primaryErrorMessage = result?.error?.message || `Gemini HTTP ${upstream.status}`;
+          if (!primaryFailed) {
+            const safeMessage = upstream.status === 400
+              ? "O Gemini não aceitou a mensagem. Tente reformular sua pergunta."
+              : upstream.status === 403 || upstream.status === 401
+                ? "A autenticação do Gemini falhou. Confira a variável GEMINI_API_KEY na Vercel."
+                : "Não consegui completar essa solicitação. Tente novamente.";
+            return res.status(502).json({ error: safeMessage });
+          }
+        } else {
+          const candidate = result?.candidates?.[0];
+          answer = (candidate?.content?.parts || []).map((part) => part.text || "").join("").trim();
+          if (answer) return res.status(200).json({ message: { content: answer, provider: "gemini" } });
+          primaryFailed = true;
+          primaryErrorMessage = "Gemini retornou resposta vazia.";
         }
-      } else {
-        const candidate = result?.candidates?.[0];
-        answer = (candidate?.content?.parts || []).map((part) => part.text || "").join("").trim();
-        if (answer) return res.status(200).json({ message: { content: answer, provider: "gemini" } });
-        primaryFailed = true;
-        primaryErrorMessage = "Gemini returned no text.";
+      } catch (primaryError) {
+        primaryFailed = true; // timeout, falha de rede ou erro transitório no fetch
+        primaryErrorMessage = primaryError?.message || "Gemini timeout/network error";
       }
-    } catch (primaryError) {
-      primaryFailed = true; // timeout, falha de rede ou erro transitório no fetch
-      primaryErrorMessage = primaryError?.message || "Gemini timeout/network error";
     }
 
     if (primaryFailed && process.env.GROQ_API_KEY) {
