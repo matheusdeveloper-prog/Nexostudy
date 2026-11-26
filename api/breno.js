@@ -124,7 +124,7 @@ export default async function handler(req, res) {
         primaryErrorMessage = "Gemini returned no text.";
       }
     } catch (primaryError) {
-      primaryFailed = primaryError?.name === "AbortError" || primaryError?.status >= 500;
+      primaryFailed = true; // timeout, falha de rede ou erro transitório no fetch
       primaryErrorMessage = primaryError?.message || "Gemini timeout/network error";
     }
 
