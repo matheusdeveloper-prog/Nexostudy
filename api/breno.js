@@ -1,4 +1,29 @@
 const MODEL = "gemini-3.8-flash";
+const GROQ_MODEL = "openai/gpt-oss-20b";
+async function fetchWithTimeout(url, options, timeoutMs = 25000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try { return await fetch(url, { ...options, signal: controller.signal }); }
+  finally { clearTimeout(timeout); }
+}
+async function callGroq(apiKey, systemText, messages) {
+  const chatMessages = [
+    { role: "system", content: systemText },
+    ...messages.slice(-14)
+      .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .map((m) => ({ role: m.role, content: m.content.slice(0, 12000) }))
+  ];
+  const upstream = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model: GROQ_MODEL, messages: chatMessages, temperature: 0.65, max_tokens: 1600 })
+  }, 20000);
+  const data = await upstream.json().catch(() => ({}));
+  if (!upstream.ok) throw new Error(`Groq HTTP ${upstream.status}: ${data?.error?.message || ""}`);
+  const answer = data?.choices?.[0]?.message?.content?.trim();
+  if (!answer) throw new Error("Groq retornou resposta vazia.");
+  return answer;
+}
 const DEFAULT_SYSTEM_PROMPT = `Você é BRENO, o tutor inteligente de estudos do NEXO.
 
 IDENTIDADE E TOM:
@@ -60,59 +85,68 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Envie uma mensagem para o BRENO." });
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000);
-
     let upstream;
+    let result = {};
+    let answer = "";
+    let primaryFailed = false;
+    let primaryErrorMessage = "";
     try {
-      upstream = await fetch(
+      upstream = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: controller.signal,
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: systemText }] },
             contents,
-            generationConfig: {
-              temperature: 0.65,
-              maxOutputTokens: 1600
-            }
+            generationConfig: { temperature: 0.65, maxOutputTokens: 1600 }
           })
-        }
+        },
+        25000
       );
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const result = await upstream.json().catch(() => ({}));
-    if (!upstream.ok) {
-      const detail = result?.error?.message || "sem detalhes";
-      console.error("Gemini API error:", upstream.status, detail);
-      const safeMessage = upstream.status === 400
-        ? "O Gemini não aceitou a mensagem. Tente reformular sua pergunta."
-        : upstream.status === 403 || upstream.status === 401
-          ? "A autenticação do Gemini falhou. Confira a variável GEMINI_API_KEY na Vercel."
-          : upstream.status === 429
-            ? "O limite de uso do Gemini foi atingido. Aguarde um pouco e tente novamente."
-            : upstream.status >= 500
-              ? "O Gemini está instável no momento. Tente novamente em instantes."
+      result = await upstream.json().catch(() => ({}));
+      if (!upstream.ok) {
+        primaryFailed = upstream.status === 429 || upstream.status >= 500;
+        primaryErrorMessage = result?.error?.message || `Gemini HTTP ${upstream.status}`;
+        if (!primaryFailed) {
+          const safeMessage = upstream.status === 400
+            ? "O Gemini não aceitou a mensagem. Tente reformular sua pergunta."
+            : upstream.status === 403 || upstream.status === 401
+              ? "A autenticação do Gemini falhou. Confira a variável GEMINI_API_KEY na Vercel."
               : "Não consegui completar essa solicitação. Tente novamente.";
-      return res.status(502).json({ error: safeMessage });
+          return res.status(502).json({ error: safeMessage });
+        }
+      } else {
+        const candidate = result?.candidates?.[0];
+        answer = (candidate?.content?.parts || []).map((part) => part.text || "").join("").trim();
+        if (answer) return res.status(200).json({ message: { content: answer, provider: "gemini" } });
+        primaryFailed = true;
+        primaryErrorMessage = "Gemini returned no text.";
+      }
+    } catch (primaryError) {
+      primaryFailed = primaryError?.name === "AbortError" || primaryError?.status >= 500;
+      primaryErrorMessage = primaryError?.message || "Gemini timeout/network error";
     }
 
-    const candidate = result?.candidates?.[0];
-    const answer = (candidate?.content?.parts || [])
-      .map((part) => part.text || "")
-      .join("")
-      .trim();
-
-    if (!answer) {
-      console.error("Gemini returned no text. finishReason:", candidate?.finishReason || "unknown");
-      return res.status(502).json({ error: "O BRENO não recebeu uma resposta em texto. Tente enviar novamente." });
+    if (primaryFailed && process.env.GROQ_API_KEY) {
+      try {
+        const fallbackAnswer = await callGroq(process.env.GROQ_API_KEY, systemText, messages);
+        console.warn("BRENO used Groq fallback after Gemini error:", primaryErrorMessage);
+        return res.status(200).json({ message: { content: fallbackAnswer, provider: "groq-fallback" } });
+      } catch (fallbackError) {
+        console.error("Groq fallback failed:", fallbackError?.message || "erro desconhecido");
+      }
+    }
+    if (primaryFailed) {
+      console.error("Gemini primary failed:", primaryErrorMessage);
+      return res.status(503).json({
+        error: process.env.GROQ_API_KEY
+          ? "Gemini e a IA de reserva estão indisponíveis agora. Tente novamente em instantes."
+          : "O Gemini está instável e a IA de reserva ainda não está configurada. Configure GROQ_API_KEY na Vercel para ativar a reserva automática."
+      });
     }
 
-    return res.status(200).json({ message: { content: answer } });
+
   } catch (error) {
     if (error?.name === "AbortError") {
       return res.status(504).json({ error: "O BRENO demorou para responder. Tente novamente." });
